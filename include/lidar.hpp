@@ -39,7 +39,7 @@
 
     // Euclidean 3D clustering extraction functions
     void ClusterHelper (int idx, pcl::PointCloud<pcl::PointXYZ>::Ptr Cloud, std::vector<int>& Cluster, std::vector<bool>& Processed, KdTree* Tree, float DistanceTol);
-    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> EuclideanClustering (pcl::PointCloud<PointXYZ>::Ptr Cloud, float Tolerance, int MinSize, int MaxSize);
+    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> EuclideanClustering (pcl::PointCloud<pcl::PointXYZ>::Ptr Cloud, float Tolerance, int MinSize, int MaxSize);
 
     // --- void ClusteringExtraction (pcl::PointCloud<pcl::PointXYZ>::Ptr Cloud, float Tolerance, int MinSize, int MaxSize, std::vector<Object> *outputObjects, int *numOutputObjects);
 

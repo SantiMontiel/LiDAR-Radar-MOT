@@ -1,4 +1,5 @@
 #include "../include/lidar.hpp"
+#include "../include/kdtree.hpp"
 
 /****************************************************
  *  XYZ and angle cloud filtering
@@ -51,6 +52,7 @@ pcl::PointCloud<pcl::PointXYZ> CloudFiltering (pcl::PointCloud<pcl::PointXYZ>::P
  *  I- Cloud, MaxIterations, Threshold
  *  O- Pair of clouds (plane and obstacles)
  * **************************************************/
+   std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> segCloud (std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr>);
 
 std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> PlaneSegmentation (pcl::PointCloud<pcl::PointXYZ>::Ptr Cloud, int MaxIterations, float Threshold) {
 
@@ -238,21 +240,21 @@ void ClusteringExtraction (pcl::PointCloud<pcl::PointXYZ>::Ptr Cloud, float Tole
 }
 */
 
-void ClusterHelper (int idx, pcl::PointCloud<pcl::PointXYZ>::Ptr Cloud, std::vector<int>& Cluster,
+// -- Da error: al recorrer con un puntero no analizas el resto de puntos. Carlos lo hace con un vector
+void ClusterHelper (int idx, std::vector<std::vector<float>> Cloud, std::vector<int>& Cluster,
                      std::vector<bool>& Processed, KdTree* Tree, float DistanceTol) {
 
     Processed[idx] = true;
     Cluster.push_back(idx);
-    std::vector<int> nearest = Tree->search(Cloud->points[idx], DistanceTol);
+    std::vector<int> nearest = Tree->search(Cloud[idx], DistanceTol);
 
     for (auto id : nearest) {
-        if(!Processed[id]) {     ClusterHelper(id, Cloud, Cluster, Processed, Tree, DistanceTol)     }
+        if(!Processed[id]) {     ClusterHelper(id, Cloud, Cluster, Processed, Tree, DistanceTol);     }
     }
 
 }
 
-std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> EuclideanClustering (pcl::PointCloud<PointXYZ>::Ptr Cloud, float Tolerance,
-                                                                        int MinSize, int MaxSize) {
+std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> EuclideanClustering (pcl::PointCloud<pcl::PointXYZ>::Ptr Cloud, float Tolerance, int MinSize, int MaxSize) {
 
     // 1. Create and fill KdTree based on cloud points
     KdTree* Tree = new KdTree;
@@ -272,7 +274,7 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> EuclideanClustering (pcl::Point
     std::vector<bool> processedPoints(treePoints.size(), false);
 
     int idy = 0;
-    while (i < treePoints.size()) {
+    while (idy < treePoints.size()) {
 
         // If the point was previously processed, continue
         if (processedPoints[idy]) {
@@ -282,22 +284,22 @@ std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> EuclideanClustering (pcl::Point
 
         // Else, create a new cluster
         std::vector<int> Cluster;
-        ClusterHelper(idy, treePoints, processedPoints, Tree, Tolerance);
+        ClusterHelper(idy, treePoints, Cluster,  processedPoints, Tree, Tolerance);
         clustersIndicesVector.push_back(Cluster);
         idy++;
 
     }
 
     // 3. Obtain individual clusters based on clusters indices vector
-    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clustersVector
+    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clustersVector;
     for (std::vector<int> clusterIndex : clustersIndicesVector) {
 
         // Conversion from vector of indices to pcl::PointCloud
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloudCluster (new pcl::PointCloud<PointT>);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloudCluster (new pcl::PointCloud<pcl::PointXYZ>);
         for (int idz : clusterIndex) {  cloudCluster->points.push_back(Cloud->points[idz]);  }
 
         // If the cluster meets the size requirements, push it to pcl::PointCloud output vector. Else, discard.
-        if ((cloudCluster->points.size() > minSize) && (cloudCluster->points.size() < maxSize)) {
+        if ((cloudCluster->points.size() > MinSize) && (cloudCluster->points.size() < MaxSize)) {
 
             // Adding extra information to the cluster
             cloudCluster->width = cloudCluster->points.size();

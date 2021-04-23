@@ -23,6 +23,7 @@
 // -- Submodules includes
 #include "../include/lidar.hpp"
 #include "../include/object.hpp"
+#include "../include/kdtree.hpp"
 
 // -- ROS publishers definitions
 ros::Publisher pub_LiDAR_FilteredCloud;
@@ -63,12 +64,12 @@ void LiDAR_CB (const sensor_msgs::PointCloud2::ConstPtr& LidarMsg) {
     pub_LiDAR_FilteredCloud.publish(msgFilteredCloud);
 
     // 2. PLANE SEGMENTATION (with Ransac3D algorithm)
-    std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> segCloud (new std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>>);
+    std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> segCloud (std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr>);
     pcl::PointCloud<pcl::PointXYZ>::Ptr roadCloud (new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::PointXYZ>::Ptr obstCloud (new pcl::PointCloud<pcl::PointXYZ>);
     segCloud = PlaneSegmentation(FilteredCloud, 100, 0.2);
-    *obstCloud = *segCloud.first;
-    *roadCloud = *segCloud.second;
+    obstCloud = *segCloud.first;
+    roadCloud = *segCloud.second;
 
     // 2.b. Publishing intermediate output 2 -> segmented plane
     sensor_msgs::PointCloud2 msgRoadCloud;
@@ -77,7 +78,7 @@ void LiDAR_CB (const sensor_msgs::PointCloud2::ConstPtr& LidarMsg) {
     msgRoadCloud.header.stamp = LidarMsg->header.stamp;
 
     pub_LiDAR_RoadCloud.publish(msgRoadCloud);
-
+    /*
     // 3. CLUSTERING EXTRACTION
     std::vector<Object> Obstacles;
     int numObstacles = 0;
@@ -115,7 +116,7 @@ void LiDAR_CB (const sensor_msgs::PointCloud2::ConstPtr& LidarMsg) {
 	}
 
     // 3.c. Publishing bounding boxes
-
+    */
 }
 
 // -- Main function
