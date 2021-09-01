@@ -1,5 +1,6 @@
 #include "../include/lidar.hpp"
 #include "../include/kdtree.hpp"
+#include "../include/object.hpp"
 
 /****************************************************
  *  XYZ and angle cloud filtering
@@ -24,6 +25,7 @@ pcl::PointCloud<pcl::PointXYZ> CloudFiltering (pcl::PointCloud<pcl::PointXYZ>::P
     }
 
     // -- Angle filtering
+    /*
     pcl::PointCloud<pcl::PointXYZ> FilteredCloud;
     float FieldOfView = 80;
     double FovMin = -(FieldOfView/2)*(3.14/180);;
@@ -39,10 +41,10 @@ pcl::PointCloud<pcl::PointXYZ> CloudFiltering (pcl::PointCloud<pcl::PointXYZ>::P
             FilteredCloud.points.push_back(Point);
         }
 
-    }
+    }*/
 
-    return FilteredCloud;
-
+    return auxFilteredCloud;
+    // return FilteredCloud;
 }
 
 /****************************************************
@@ -151,9 +153,9 @@ std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::P
  *  I- Original cloud, Inliers to split
  *  O- New cloud with only inliers
  * **************************************************/
-/*
- void ClusteringExtraction (pcl::PointCloud<pcl::PointXYZ>::Ptr Cloud, float Tolerance, int MinSize, int MaxSize, std::vector<Object>* outputObjects, int* numOutputObjects) {
 
+ void ClusteringExtraction (pcl::PointCloud<pcl::PointXYZ>::Ptr Cloud, float Tolerance, int MinSize, int MaxSize, std::vector<Object>* outputObjects, int* numOutputObjects) 
+ {
     // -- KD-tree object definition
     pcl::search::KdTree<pcl::PointXYZ>::Ptr Tree (new pcl::search::KdTree<pcl::PointXYZ>);
     Tree->setInputCloud(Cloud);
@@ -173,10 +175,10 @@ std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::P
 
         pcl::PointCloud<pcl::PointXYZ>::Ptr CloudCluster (new pcl::PointCloud<pcl::PointXYZ>);
         for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); ++pit) {
-            CloudCluster->push_back ((*Cloud)[*pit]);
+            CloudCluster->points.push_back (Cloud->points[*pit]);
         }
         
-        CloudCluster->width = CloudCluster->size ();
+        CloudCluster->width = CloudCluster->points.size ();
         CloudCluster->height = 1;
         CloudCluster->is_dense = true;
 
@@ -185,8 +187,8 @@ std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::P
         float xcen = -INFINITY, ycen = -INFINITY, zcen = -INFINITY;
 
         // Cloud vertices search
-        for (int i = 0; i < CloudCluster->points.size(); i++){
-
+        for (int i = 0; i < CloudCluster->points.size(); i++)
+        {
             if (CloudCluster->points[i].x < xmin) {xmin = CloudCluster->points[i].x;}
             if (CloudCluster->points[i].x > xmax) {xmax = CloudCluster->points[i].x;}
             if (CloudCluster->points[i].y < ymin) {ymin = CloudCluster->points[i].y;}
@@ -225,20 +227,139 @@ std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::P
         outputObjects->push_back(object);
         *numOutputObjects = *numOutputObjects + 1;
     }
+}
 
+// Extract clusters from the coloured XYZ filtered LiDAR point cloud according to the input cluster parameters
+void cluster_filter(pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud, float tolerance, int min_cluster, int max_cluster, std::vector<Object> *output_objects, int *number_output_objects)
+{
+	// Parameters:
+	// filtered_cloud: XYZ and angle filtered LiDAR point cloud that contains the clusters
+	// tolerance: Tolerance of clusters
+	// min_cluster: Minimum size of a cluster
+	// max_cluster: Maximum size of a cluster
+	// only_laser_objects: Pointer that points to the array that contains the clusters
+	// only_laser_objects_number: Number of objects
+
+	// This function only takes into account the size of the clusters
+
+    // Extract clusters from point cloud
+
+	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
+	tree->setInputCloud (filtered_cloud);
+	std::vector<pcl::PointIndices> cluster_indices;
+	pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
+	ec.setClusterTolerance (tolerance); 
+	ec.setMinClusterSize (min_cluster); 
+	ec.setMaxClusterSize (max_cluster);
+	ec.setSearchMethod (tree);
+	ec.setInputCloud (filtered_cloud);
+	ec.extract (cluster_indices);
+
+    // Store the clusters
+
+	for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end(); ++it)
+	{
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZ>);
+ 
+		for (std::vector<int>::const_iterator pit = it->indices.begin(); pit != it->indices.end(); ++pit)
+		{
+			cloud_cluster->points.push_back (filtered_cloud->points[*pit]); 
+		}
+
+		cloud_cluster->width = cloud_cluster->points.size();
+		cloud_cluster->height = 1;
+		cloud_cluster->is_dense = true;
+ 
+		// Initialize point cloud vertices. Set to +/- INFINITY to ensure a proper behaviour for the first cluster
+
+		float x_min = INFINITY; 
+		float y_min = INFINITY;
+		float z_min = INFINITY;
+		float x_max = -INFINITY;
+		float y_max = -INFINITY;
+		float z_max = -INFINITY;
+ 
+		float centroid_x = -INFINITY;
+		float centroid_y = -INFINITY;
+		float centroid_z = -INFINITY;
+ 
+		for (int i = 0; i < cloud_cluster->points.size(); i++)
+		{
+			if (cloud_cluster->points[i].x < x_min)		
+			{
+				x_min = cloud_cluster->points[i].x;
+			}
+ 
+			if (cloud_cluster->points[i].y < y_min)		
+			{
+				y_min = cloud_cluster->points[i].y;
+			}
+ 
+			if (cloud_cluster->points[i].z < z_min)	
+			{
+				z_min = cloud_cluster->points[i].z;		
+			}
+			if (cloud_cluster->points[i].x > x_max)
+			{
+				x_max = cloud_cluster->points[i].x;
+			}
+			if (cloud_cluster->points[i].y > y_max)
+			{
+				y_max = cloud_cluster->points[i].y;
+			}
+			if (cloud_cluster->points[i].z > z_max)
+			{
+				z_max = cloud_cluster->points[i].z;
+			}
+		}
+
+		// Centroid
+
+		centroid_x = (x_max+x_min)/2.0;
+		centroid_y = (y_max+y_min)/2.0;
+		centroid_z = (z_max+z_min)/2.0;
+
+		Eigen::Vector4f centroid;
+		pcl::compute3DCentroid(*cloud_cluster,centroid);
+
+		geometry_msgs::PointStamped local_centroid;
+		geometry_msgs::Point32 global_centroid;
+
+		local_centroid.point.x = centroid_x;
+		local_centroid.point.y = centroid_y;
+		local_centroid.point.z = centroid_z;
+
+        Object object;
+
+        object.x_max = x_max;
+        object.x_min = x_min;
+        object.y_max = y_max;
+        object.y_min = y_min;
+        object.z_max = z_max;
+        object.z_min = z_min;
+
+        object.d = x_max - x_min;
+        object.w = y_max - y_min;
+        object.h = z_max - z_min;
+
+        object.centroid_x = centroid[0];
+        object.centroid_y = centroid[1];
+        object.centroid_z = centroid[2];
+
+        // Type
+
+        object.type = "none";
+
+        // Cloud
+
+        object.cloud = cloud_cluster;
+
+        output_objects->push_back(object);
+        *number_output_objects = *number_output_objects + 1;        
+	}
 }
 
 
-void ClusteringExtraction (pcl::PointCloud<pcl::PointXYZ>::Ptr Cloud, float Tolerance, int MinSize, int MaxSize,
-                             std::vector<Object>* outputObjects, int* numOutputObjects) {
-
-    std:vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clusters;
-
-    KdTree* tree = new KdTree;
-
-
-}
-*/
 
 // -- Da error: al recorrer con un puntero no analizas el resto de puntos. Carlos lo hace con un vector
 void ClusterHelper (int idx, std::vector<std::vector<float>> Cloud, std::vector<int>& Cluster,

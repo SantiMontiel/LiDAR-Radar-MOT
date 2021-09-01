@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="lidar_radar_mot" type="lidar_radar_mot_node" name="lidar_radar_mot_node" output="screen"/>
+</launch>

@@ -41,6 +41,6 @@
     void ClusterHelper (int idx, pcl::PointCloud<pcl::PointXYZ>::Ptr Cloud, std::vector<int>& Cluster, std::vector<bool>& Processed, KdTree* Tree, float DistanceTol);
     std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> EuclideanClustering (pcl::PointCloud<pcl::PointXYZ>::Ptr Cloud, float Tolerance, int MinSize, int MaxSize);
 
-    // --- void ClusteringExtraction (pcl::PointCloud<pcl::PointXYZ>::Ptr Cloud, float Tolerance, int MinSize, int MaxSize, std::vector<Object> *outputObjects, int *numOutputObjects);
-
+    void ClusteringExtraction (pcl::PointCloud<pcl::PointXYZ>::Ptr Cloud, float Tolerance, int MinSize, int MaxSize, std::vector<Object> *outputObjects, int *numOutputObjects);
+    void cluster_filter (pcl::PointCloud<pcl::PointXYZ>::Ptr , float , int , int , std::vector<Object> *, int *);
 #endif
